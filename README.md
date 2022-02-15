@@ -29,6 +29,6 @@ cd src/bp_osd
 python3 setup.py build --build-lib=../../dev/
 ```
 
-# Run the examples/classical_bp_osd_decode_sim.py
+### Run the examples/classical_bp_osd_decode_sim.py
 
 
