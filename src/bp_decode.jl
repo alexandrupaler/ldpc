@@ -1,3 +1,8 @@
+#todo:
+#   write decorators? for original function (or anything which can make a
+#       corresponding call in Julia)
+
+
 using BitSAD
 
 #done
@@ -45,17 +50,96 @@ function mod2sparse_prev_in_col(e)
     return e.up
 end
 
-#todo:
 function bp_decode_cy()
     bp_decode_log_prob_ratios()
 
-function bp_decode_log_prob_ratios()
-    for j in 1:n
+function bp_decode_log_prob_ratios(dec)
+#variables that are typically held in the bp_decoder class:
+# ch[] (the channel probs)
+# H (??)
+# max_iter
+# synd[] (??)
+# log_prob_ratios[]
+# bp_decoding[]
+# bp_decoding_synd
+# N
+# M
+
+# for each of the above: am I reading or read/writing? Where is it initialized,
+#   and what to? Determine if it needs to be defined before bp_decode_log_prob_ratios
+#   (ie as part of the decoder struct) or if it can be defined in this function.
+# update: above does not matter, any values which are written to need to be returned
+#   (i.e. pass by reference) and any which are read are defined outside. So all in struct.
+
+
+    for j in 1:dec.N #fix syntax
+        e = mod2sparse_first_in_col(dec.H, j)
+        while !(mod2sparse_at_end(e))
+            e.bit_to_check = log((1 - dec.channel_probs[j])/(dec.channel_probs[j]))
+            e = mod2sparse_next_in_col(e)
+
+    dec.converge = 0
+    for iteration in 1:(dec.max_iter+1)
+        #iter = iteration # probably redundant/unused
+        #if bp_method==2 #this is the setting for our trial run
+        #product sum check_to_bit messages
+        for i in 1:dec.M
+            e = mod2sparse_first_in_row(dec.H, i)
+            temp = 1.0
+            while !(mod2sparse_at_end(e))
+                e.check_to_bit = temp
+                temp *= tanh(e.bit_to_check/2)
+                e = mod2sparse_next_in_row(e)
+
+            e = mod2sparse_last_in_row(dec.H, i)
+            temp = 1.0
+            while !(mod2sparse_at_end(e))
+                e.check_to_bit *= temp
+                e.check_to_bit = (((-1)^dec.synd[i]) * log((1 + e.check_to_bit) / (1 - e.check_to_bit)))
+                temp *= tanh(e.bit_to_check/2)
+                e = mod2sparse_prev_in_row(e)
+
+        # bit-to-check messages
+        for j in 1:dec.N
+            e = mod2sparse_first_in_col(dec.H, j)
+            temp = log((1-dec.channel_probs[j]) / (dec.channel_probs[j]))
+
+            while !(mod2sparse_at_end(e)):
+                e.bit_to_check = temp
+                temp += e.check_to_bit
+                e = mod2sparse_next_in_col(e)
+
+            dec.log_prob_ratios[j] = temp
+            if temp <= 0
+                dec.bp_decoding[j]=1
+            else
+                dec.bp_decoding[j]=0
+
+            e = mod2sparse_last_in_col(dec.H, j)
+            temp = 0.0
+            while !(mod2sparse_at_end)
+                e.bit_to_check += temp
+                temp += e.check_to_bit
+                e = mod2sparse_prev_in_col(e)
+
+        #all of these params need to be defined still, as do N and M for the message loops.
+        mod2sparse_mulvec(dec.H, dec.bp_decoding, dec.bp_decoding_synd)
+
+        equal = 1
+        for check in 1:dec.M
+            if dec.synd[check] != dec.bp_decoding_synd[check]
+                equal = 0
+                break
+        if equal == 1
+            dec.converge = 1 #what is this flag used for?
+            return 1
+
+        return 0
+
 
 function mod2sparse_at_end(e)
     return (e.row < 0)
 
-#done
 mutable struct mod2entry()
     bit_to_check
     check_to_bit
@@ -75,3 +159,40 @@ mutable struct mod2sparse()
     rows
     cols
 end
+
+mutable struct decoder()
+    channel_probs
+    H
+    max_iter
+    synd
+    log_prob_ratios #these are defined in bp_decode_log_prob_ratios
+    bp_decoding
+    bp_decoding_synd
+    N
+    M
+    converge
+end
+
+# complicated stuff:
+# 2-step process:
+#   1. Run the modified decoder with sample parameters. Don't care about result,
+#       but as it runs it will populate a julia file with equivalent julia code
+#       (including calls to mod2sparse stuff and bp_decode_log_prob_ratios)
+#   2. Call generatehw on the populated julia file, write the results to a verilog
+#       file.
+
+function programTrace()
+    # make original call
+    #
+
+function main()
+#add the following lines to L
+    f_verilog, f_circuit = generatehw(programTrace)
+    io = open("hwfile.vl", "w")
+    write(io, f_verilog)
+    close(io)
+
+    jl_file = open("jl_code.jl", 'a')
+    jl_file.writelines(L) #where L is an array of all the lines of julia to be written
+    jl_file.close()
+
