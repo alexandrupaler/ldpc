@@ -1,6 +1,5 @@
 #todo:
-#   write decorators? for original function (or anything which can make a
-#       corresponding call in Julia)
+#   modify base code to add equivalent lines of julia to L.
 
 
 using BitSAD
@@ -181,18 +180,9 @@ end
 #   2. Call generatehw on the populated julia file, write the results to a verilog
 #       file.
 
-function programTrace()
-    # make original call
-    #
+# There will be a decorator which only works on functions which are prepared for
+#   conversion to julia. This decorator will initialize a list L, run the function,
+#   then add the hardware generation lines to the end of L, then write L to a jl
+#   file. So the above process is accomplished via a decorator.
 
-function main()
-#add the following lines to L
-    f_verilog, f_circuit = generatehw(programTrace)
-    io = open("hwfile.vl", "w")
-    write(io, f_verilog)
-    close(io)
-
-    jl_file = open("jl_code.jl", 'a')
-    jl_file.writelines(L) #where L is an array of all the lines of julia to be written
-    jl_file.close()
 
