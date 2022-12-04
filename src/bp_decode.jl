@@ -1,8 +1,8 @@
 #todo:
-#   modify base code to add equivalent lines of julia to L.
-
+#   modify everything to use Julia sparsearrays
 
 using BitSAD
+using
 
 #done
 #args are m, u, and v respectively in C version
@@ -37,16 +37,16 @@ function mod2sparse_last_in_col(m, j)
 end
 
 function mod2sparse_next_in_row(e)
-    return e.right
+    return (e.col + 1)
 end
 function mod2sparse_next_in_col(e)
-    return e.down
+    return (e.row + 1)
 end
 function mod2sparse_prev_in_row(e)
-    return e.left
+    return (e.col - 1)
 end
 function mod2sparse_prev_in_col(e)
-    return e.up
+    return (e.row - 1)
 end
 
 function bp_decode_cy()
@@ -70,43 +70,44 @@ function bp_decode_log_prob_ratios(dec)
 # update: above does not matter, any values which are written to need to be returned
 #   (i.e. pass by reference) and any which are read are defined outside. So all in struct.
 
-
+    #j is the column (second index)
     for j in 1:dec.N #fix syntax
-        e = mod2sparse_first_in_col(dec.H, j)
+        e = H[mod2sparse_first_in_col(dec.H, j)][j]
         while !(mod2sparse_at_end(e))
             e.bit_to_check = log((1 - dec.channel_probs[j])/(dec.channel_probs[j]))
-            e = mod2sparse_next_in_col(e)
+            e = H[mod2sparse_next_in_col(e)][e.col]
 
     dec.converge = 0
     for iteration in 1:(dec.max_iter+1)
         #iter = iteration # probably redundant/unused
         #if bp_method==2 #this is the setting for our trial run
         #product sum check_to_bit messages
+        # i is the col
         for i in 1:dec.M
-            e = mod2sparse_first_in_row(dec.H, i)
+            e = H[i][mod2sparse_first_in_row(dec.H, i)]
             temp = 1.0
             while !(mod2sparse_at_end(e))
                 e.check_to_bit = temp
                 temp *= tanh(e.bit_to_check/2)
-                e = mod2sparse_next_in_row(e)
+                e = H[e.row][mod2sparse_next_in_row(e)]
 
-            e = mod2sparse_last_in_row(dec.H, i)
+            e = H[i][mod2sparse_last_in_row(dec.H, i)]
             temp = 1.0
             while !(mod2sparse_at_end(e))
                 e.check_to_bit *= temp
                 e.check_to_bit = (((-1)^dec.synd[i]) * log((1 + e.check_to_bit) / (1 - e.check_to_bit)))
                 temp *= tanh(e.bit_to_check/2)
-                e = mod2sparse_prev_in_row(e)
+                e = H[e.row][mod2sparse_prev_in_row(e)]
 
         # bit-to-check messages
         for j in 1:dec.N
-            e = mod2sparse_first_in_col(dec.H, j)
+            e = H[mod2sparse_first_in_col(dec.H, j)][j]
             temp = log((1-dec.channel_probs[j]) / (dec.channel_probs[j]))
 
             while !(mod2sparse_at_end(e)):
                 e.bit_to_check = temp
                 temp += e.check_to_bit
-                e = mod2sparse_next_in_col(e)
+                e = dec.H[mod2sparse_next_in_col(e)]
 
             dec.log_prob_ratios[j] = temp
             if temp <= 0
@@ -130,7 +131,7 @@ function bp_decode_log_prob_ratios(dec)
                 equal = 0
                 break
         if equal == 1
-            dec.converge = 1 #what is this flag used for?
+            dec.converge = 1 #how will I use the return value from this?
             return 1
 
         return 0
@@ -139,24 +140,31 @@ function bp_decode_log_prob_ratios(dec)
 function mod2sparse_at_end(e)
     return (e.row < 0)
 
+# I expect that storing mod2entry objects in other mod2entry objects is a very bad
+#   idea that will end poorly and not work at all. In that case, my alternative is to
+#   store a pointer to the parent mod2sparse object and make left, right, etc. return
+#   the correct objects by returning the object at the proper index of owner. This
+#   would require dereferencing which is hard.
 mutable struct mod2entry()
-    bit_to_check
-    check_to_bit
+    bit_to_check #what is this
+    check_to_bit #what is this
     row
     col
-    sgn
+    sgn #what is this
 
-    left
-    right
-    up
-    down
+    left # = owner[col-1]
+    right # = owner[col+1]
+    up # = owner[row-1]
+    down # = owner[row+1]
+
+    # owner #pointer to the mod2sparse object which the mod2entry is a part of
 end
 
 mutable struct mod2sparse()
     n_rows::int
     n_cols::int
-    rows
-    cols
+    rows #array of mod2entry's
+    cols #array of mod2entry's
 end
 
 mutable struct decoder()
@@ -170,6 +178,8 @@ mutable struct decoder()
     N
     M
     converge
+    bits_to_checks
+    checks_to_bits
 end
 
 # complicated stuff:

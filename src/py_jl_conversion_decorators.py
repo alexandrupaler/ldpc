@@ -1,11 +1,12 @@
 import functools
 
+L = []
+
 def write_hw_gen_jl(func):
     @functools.wraps(func)
     def hw_gen_jl_wrapper(*args, **kwargs):
-        global L = [] #why are there errors here?
         a = func(*args, **kwargs)
-        L.append("f_verilog, f_circuit = generatehw(programTrace)")
+        L.append("f_verilog, f_circuit = generatehw(NAMEOFFUNC)")
         L.append("io = open(\"hwfile.vl\", \"w\")")
         L.append("write(io, f_verilog)")
         L.append("close(io)")
