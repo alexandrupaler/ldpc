@@ -24,6 +24,24 @@ function mod2sparse_check_to_bit(checks_to_bits, i)
     return checks_to_bits[i]
 end
 
+function mod2sparse_at_start_row(m, i, e)
+    return (mod2sparse_first_in_row(m, i) == e)
+end
+
+#unfortunately requires m as well as e, not as elegant as next_in_col
+function mod2sparse_next_in_row(m, e)
+    for i in e:length(m.rowval)
+        if (m.rowval[i] == e)
+            return i
+end
+
+#can only guarantee a prev exists with a unique mod2sparse_at_start_row function
+function mod2sparse_prev_in_row(m, e)
+    for i in 1:-1:e
+        if (m.rowval[i] == e)
+            return i
+end
+
 #TODO:
 
 
@@ -33,7 +51,7 @@ end
 #Note: m.colptr is always of size n+1 for a matrix of n non-zero elements.
 #Q: How should this function behave in the absence of a non-zero element in the column?
 #A: For now, assume this is never the case. TODO: ACTUALLY ANSWER THIS LATER
-#returns the index of the value in nzval associated with the first non-zero element of row i in sparse matrix m.
+#returns the index of the value in nzval associated with the first non-zero element of column i in sparse matrix m.
 function mod2sparse_first_in_col(m, i)
     return m.colptr[i]
 end
@@ -44,8 +62,14 @@ end
 
 #returns true if e is the last nz element in the column of m, false otherwise.
 #TODO: make this such that m does not need to be passed as a parameter.
-function mod2sparse_at_end(m, j, e)
+#I am unsure if I need separate at_end row and col functions.
+function mod2sparse_at_end_col(m, j, e)
     return (m.colptr[j+1] == e)
+end
+
+#this sucks. TODO: is there a way to not use m?
+function mod2sparse_at_end_row(m, i, e)
+    return (mod2sparse_last_in_row(m, i) == e)
 end
 
 #returns the nzval index associated with the next nz value in a matrix.
@@ -54,15 +78,30 @@ function mod2sparse_next_in_col(e)
     return e+1
 end
 
-#IN PROGRESS:
-
 #SHOULD TRY TO ACCESS BY COLUMN, NOT ROW.
+#Q: How should this function behave in the absence of a non-zero element in the column?
+#A: For now, assume this is never the case. TODO: ACTUALLY ANSWER THIS LATER
+#returns the index of the value in nzval associated with the first non-zero element of row i in sparse matrix m.
 function mod2sparse_first_in_row(m, i) #m is assumed to be a SparseMatrixCSC struct
-    return m.nzval[]
+    for e in 1:length(m.rowval) #(front to back)
+        if (m.rowval[e] == i)
+            return e
 end
 
-function mod2sparse_last_in_row()
-    return m.rowval[]
+function mod2sparse_last_in_row(m, i)
+    for e in length(m.rowval):-1:1 #(back to front)
+        if (m.rowval[e] == i)
+            return e
+end
+
+function mod2sparse_at_start_col(m, j, e)
+    return (m.colptr[j] >= e)
+end
+
+#IN PROGRESS:
+
+function mod2sparse_prev_in_col()
+
 end
 
 function bp_decode_log_prob_ratios(dec)
@@ -78,4 +117,37 @@ function bp_decode_log_prob_ratios(dec)
     for iteration in 1:(dec.max_iter+1)
         for i in 1:dec.M
             e = mod2sparse_first_in_row(dec.H, i)
+            temp = 1.0
+            while !(mod2sparse_at_end_row(dec.H, i, e)
+                checks_to_bits[e] = temp
+                temp *= tanh(bits_to_checks[e] / 2)
+                e = mod2sparse_next_in_row(dec.H, e)
+            e = mod2sparse_last_in_row(m, i)
+            temp = 1.0
+            while !(mod2sparse_at_start_row(dec.H, i, e)
+                checks_to_bits[e] *= temp
+                checks_to_bits[e] = (((-1)^dec.synd[i]) * log((1 + checks_to_bits[e]) / (1 - checks_to_bits[e])))
+                temp *= tanh(bits_to_checks[e] / 2)
+                e = mod2sparse_prev_in_row(dec.H, e)
+
+        #bit to check messages
+        for j in 1:dec.N
+            e = mod2sparse_first_in_col(dec.H, j)
+            temp = log((1-dec.channel_probs[j]) / (dec.channel_probs[j]))
+            while !(mod2sparse_at_end_col(dec.H, j, e)
+                bits_to_checks[e] = temp
+                temp += checks_to_bits[e]
+                e = mod2sparse_next_in_col(e)
+            dec.log_prob_ratios[j] = temp
+            if temp <= 0
+                dec.bp_decoding[j] = 1
+            else
+                dec.bp_decoding[j] = 0
+
+            e = mod2sparse_last_in_col(dec.H, j)
+            temp = 0.0
+            while !(mod2sparse_at_start_col)
+                bits_to_checks[e] += temp
+                temp += checks_to_bits[e]
+                e = mod2sparse_prev_in_col(e)
 end
