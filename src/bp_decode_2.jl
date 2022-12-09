@@ -10,8 +10,12 @@
 #   1. Two parallel sparse matrices, one for bit_to_check and one for check_to_bit.
 #   2. Two arrays parallel with m.nzval of bit_to_check messages and check_to_bit messages.
 # A: Currently going with option 2, called bits_to_checks and checks_to_bits respectively.
+module bp_decode_2
+
 using BitSAD
 using SparseArrays
+
+export decoder, bp_decode_prob_ratios
 
 #DONE:
 
@@ -269,7 +273,7 @@ function bp_decode_log_prob_ratios(dec) #product-sum
             return 0
 end
 
-struct decoder()
+mutable struct decoder()
     channel_probs #SBitstream[]
     H
     max_iter
@@ -282,4 +286,6 @@ struct decoder()
     converge
     bits_to_checks #SBitstream[]
     checks_to_bits #SBitstream[]
+end
+
 end
