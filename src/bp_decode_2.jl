@@ -1,3 +1,4 @@
+#module bp_decode_2
 #This is a new version of the necessary mod2sparse functions for decoding which makes use
 # of the sparsearrays library in julia.
 
@@ -10,7 +11,7 @@
 #   1. Two parallel sparse matrices, one for bit_to_check and one for check_to_bit.
 #   2. Two arrays parallel with m.nzval of bit_to_check messages and check_to_bit messages.
 # A: Currently going with option 2, called bits_to_checks and checks_to_bits respectively.
-module bp_decode_2
+
 
 using BitSAD
 using SparseArrays
@@ -38,6 +39,8 @@ function mod2sparse_next_in_row(m, e)
     for i in e:length(m.rowval)
         if (m.rowval[i] == e)
             return i
+        end
+    end
 end
 
 #can only guarantee a prev exists with a unique mod2sparse_at_start_row function
@@ -45,6 +48,8 @@ function mod2sparse_prev_in_row(m, e)
     for i in 1:-1:e
         if (m.rowval[i] == e)
             return i
+        end
+    end
 end
 
 #TODO:
@@ -93,12 +98,16 @@ function mod2sparse_first_in_row(m, i) #m is assumed to be a SparseMatrixCSC str
     for e in 1:length(m.rowval) #(front to back)
         if (m.rowval[e] == i)
             return e
+        end
+    end
 end
 
 function mod2sparse_last_in_row(m, i)
     for e in length(m.rowval):-1:1 #(back to front)
         if (m.rowval[e] == i)
             return e
+        end
+    end
 end
 
 function mod2sparse_at_start_col(m, j, e)
@@ -121,7 +130,7 @@ function mod2sparse_mulvec(H, received_codeword, synd)
     for j in 1:N
         if received_codeword[j] == 1
             e = mod2sparse_first_in_col(H, j)
-            while !(mod2sparse_at_end_col(H, j, e)
+            while !(mod2sparse_at_end_col(H, j, e))
                 synd[H.rowval[e]] ^= 1
                 e = mod2sparse_next_in_col(e)
             end
@@ -134,9 +143,10 @@ function bp_decode_prob_ratios(dec) #product-sum
         # e is first non-zero entry in column j of H.
         e = mod2sparse_first_in_col(dec.H, j)
         while !(mod2sparse_at_end_col(m, j, e))
-            dec.bits_to_checks[e] = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j]) #first
+            dec.bits_to_checks[e] = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j]))) #first
             e = mod2sparse_next_in_col(e)
         end
+    end
 
     dec.converge = 0
 
@@ -145,25 +155,25 @@ function bp_decode_prob_ratios(dec) #product-sum
         for i in 1:dec.M
             e = mod2sparse_first_in_row(dec.H, i)
             temp = SBitstream((-1.0) ^(dec.synd[i]))
-            while !(mod2sparse_at_end_row(dec.H, i, e)
+            while !(mod2sparse_at_end_row(dec.H, i, e))
                 checks_to_bits[e] = temp #first
                 temp = temp * SBitstream(2.0/(1.0 + float(bits_to_checks(e)) - 1))
                 e = mod2sparse_next_in_row(dec.H, e)
             end
             e = mod2sparse_last_in_row(dec.H, i)
             temp = SBitstream(1.0)
-            while !(mod2sparse_at_start_row(dec.H, i, e)
+            while !(mod2sparse_at_start_row(dec.H, i, e))
                 checks_to_bits[e] = checks_to_bits[e] * temp
                 checks_to_bits[e] = SBitstream((1.0 - float(checks_to_bits[e])) / (1.0 + float(checks_to_bits[e])))
                 temp = temp * SBitstream(2.0 / (1.0 + float(bits_to_checks[e])) - 1.0)
                 e = mod2sparse_prev_in_row(dec.H, e)
             end
-
+        end
         #bit to check messages
         for j in 1:dec.N
             e = mod2sparse_first_in_col(dec.H, j)
             temp = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j])))
-            while !(mod2sparse_at_end_col(dec.H, j, e)
+            while !(mod2sparse_at_end_col(dec.H, j, e))
                 bits_to_checks[e] = temp
                 temp = temp * checks_to_bits[e]
                 #Maybe an isnan(temp) check here? idk when that would be true though. bp_decoder.pyx line 287
@@ -198,12 +208,13 @@ function bp_decode_prob_ratios(dec) #product-sum
                 dec.converge = 1
                 return 1
             end
-
-            return 0
+        end
+    end
+    return 0
 end
 
 #IN PROGRESS:
-
+#=
 function bp_decode_log_prob_ratios(dec) #product-sum
     for j in 1:dec.N
         # e is first non-zero entry in column j of H.
@@ -272,7 +283,7 @@ function bp_decode_log_prob_ratios(dec) #product-sum
 
             return 0
 end
-
+=#
 mutable struct decoder()
     channel_probs #SBitstream[]
     H
@@ -288,4 +299,4 @@ mutable struct decoder()
     checks_to_bits #SBitstream[]
 end
 
-end
+#end

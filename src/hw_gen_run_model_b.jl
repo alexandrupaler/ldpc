@@ -1,6 +1,6 @@
 using BitSAD
-using .bp_decode_2
-
+#using .bp_decode_2
+include("bp_decode_2.jl")
 
 # pcm = #not a param for dec
 
