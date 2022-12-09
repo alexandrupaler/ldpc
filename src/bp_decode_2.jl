@@ -142,7 +142,8 @@ function bp_decode_prob_ratios(dec) #product-sum
     for j in 1:dec.N
         # e is first non-zero entry in column j of H.
         e = mod2sparse_first_in_col(dec.H, j)
-        while !(mod2sparse_at_end_col(m, j, e))
+        while !(mod2sparse_at_end_col(dec.H, j, e))
+            print(e)
             dec.bits_to_checks[e] = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j]))) #first
             e = mod2sparse_next_in_col(e)
         end
@@ -154,15 +155,17 @@ function bp_decode_prob_ratios(dec) #product-sum
     for iteration in 1:(dec.max_iter+1)
         for i in 1:dec.M
             e = mod2sparse_first_in_row(dec.H, i)
-            temp = SBitstream((-1.0) ^(dec.synd[i]))
+            temp = SBitstream((-1.0) ^(float(dec.synd[i])))
             while !(mod2sparse_at_end_row(dec.H, i, e))
+                print(3)
                 checks_to_bits[e] = temp #first
-                temp = temp * SBitstream(2.0/(1.0 + float(bits_to_checks(e)) - 1))
+                temp = temp * SBitstream(2.0/(1.0 + float(bits_to_checks[e]) - 1))
                 e = mod2sparse_next_in_row(dec.H, e)
             end
             e = mod2sparse_last_in_row(dec.H, i)
             temp = SBitstream(1.0)
             while !(mod2sparse_at_start_row(dec.H, i, e))
+                print(3)
                 checks_to_bits[e] = checks_to_bits[e] * temp
                 checks_to_bits[e] = SBitstream((1.0 - float(checks_to_bits[e])) / (1.0 + float(checks_to_bits[e])))
                 temp = temp * SBitstream(2.0 / (1.0 + float(bits_to_checks[e])) - 1.0)
@@ -174,6 +177,7 @@ function bp_decode_prob_ratios(dec) #product-sum
             e = mod2sparse_first_in_col(dec.H, j)
             temp = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j])))
             while !(mod2sparse_at_end_col(dec.H, j, e))
+                print(2)
                 bits_to_checks[e] = temp
                 temp = temp * checks_to_bits[e]
                 #Maybe an isnan(temp) check here? idk when that would be true though. bp_decoder.pyx line 287
@@ -188,7 +192,8 @@ function bp_decode_prob_ratios(dec) #product-sum
 
             e = mod2sparse_last_in_col(dec.H, j)
             temp = SBitstream(1.0)
-            while !(mod2sparse_at_start_col)
+            while !(mod2sparse_at_start_col(dec.H, j, e))
+                print(1)
                 bits_to_checks[e] = bits_to_checks[e] * temp
                 temp = temp * checks_to_bits[e]
                 #maybe nan check on temp again?
@@ -284,7 +289,7 @@ function bp_decode_log_prob_ratios(dec) #product-sum
             return 0
 end
 =#
-mutable struct decoder()
+mutable struct decoder
     channel_probs #SBitstream[]
     H
     max_iter
