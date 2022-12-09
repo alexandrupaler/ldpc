@@ -95,8 +95,12 @@ end
 #A: For now, assume this is never the case. TODO: ACTUALLY ANSWER THIS LATER
 #returns the index of the value in nzval associated with the first non-zero element of row i in sparse matrix m.
 function mod2sparse_first_in_row(m, i) #m is assumed to be a SparseMatrixCSC struct
+    print("row is ")
+    print(i)
     for e in 1:length(m.rowval) #(front to back)
         if (m.rowval[e] == i)
+            print("first is ")
+            print(e)
             return e
         end
     end
@@ -143,7 +147,7 @@ function bp_decode_prob_ratios(dec) #product-sum
         # e is first non-zero entry in column j of H.
         e = mod2sparse_first_in_col(dec.H, j)
         while !(mod2sparse_at_end_col(dec.H, j, e))
-            print(e)
+            #print(e)
             dec.bits_to_checks[e] = SBitstream(float(dec.channel_probs[j]) / (1.0 - float(dec.channel_probs[j]))) #first
             e = mod2sparse_next_in_col(e)
         end
@@ -157,15 +161,15 @@ function bp_decode_prob_ratios(dec) #product-sum
             e = mod2sparse_first_in_row(dec.H, i)
             temp = SBitstream((-1.0) ^(float(dec.synd[i])))
             while !(mod2sparse_at_end_row(dec.H, i, e))
-                print(3)
+                print(" first loop ")
                 checks_to_bits[e] = temp #first
-                temp = temp * SBitstream(2.0/(1.0 + float(bits_to_checks[e]) - 1))
+                temp = temp * SBitstream(2.0/(1.0 + float(bits_to_checks[e])) - 1)
                 e = mod2sparse_next_in_row(dec.H, e)
             end
             e = mod2sparse_last_in_row(dec.H, i)
             temp = SBitstream(1.0)
             while !(mod2sparse_at_start_row(dec.H, i, e))
-                print(3)
+                print("second loop, e is ")
                 print(e)
                 checks_to_bits[e] = checks_to_bits[e] * temp
                 checks_to_bits[e] = SBitstream((1.0 - float(checks_to_bits[e])) / (1.0 + float(checks_to_bits[e])))
