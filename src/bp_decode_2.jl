@@ -36,7 +36,7 @@ end
 
 #unfortunately requires m as well as e, not as elegant as next_in_col
 function mod2sparse_next_in_row(m, e)
-    for i in e:length(m.rowval)
+    for i in (e+1):length(m.rowval)
         if (m.rowval[i] == e)
             return i
         end
@@ -45,7 +45,7 @@ end
 
 #can only guarantee a prev exists with a unique mod2sparse_at_start_row function
 function mod2sparse_prev_in_row(m, e)
-    for i in 1:-1:e
+    for i in e:-1:1
         if (m.rowval[i] == e)
             return i
         end
@@ -166,6 +166,7 @@ function bp_decode_prob_ratios(dec) #product-sum
             temp = SBitstream(1.0)
             while !(mod2sparse_at_start_row(dec.H, i, e))
                 print(3)
+                print(e)
                 checks_to_bits[e] = checks_to_bits[e] * temp
                 checks_to_bits[e] = SBitstream((1.0 - float(checks_to_bits[e])) / (1.0 + float(checks_to_bits[e])))
                 temp = temp * SBitstream(2.0 / (1.0 + float(bits_to_checks[e])) - 1.0)
