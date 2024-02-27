@@ -46,5 +46,5 @@ cdef class bposd_decoder(bp_decoder):
 
     cdef void osd_e_setup(self)
     cdef void osd_cs_setup(self)
-    cdef int osd(self)
+    cpdef int osd(self)
     cdef char* decode_cy(self, char* syndrome)

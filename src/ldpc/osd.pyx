@@ -191,7 +191,7 @@ cdef class bposd_decoder(bp_decoder):
         else: return char2numpy(self.osdw_decoding,self.n)
 
     #OSD Post-processing
-    cdef int osd(self):
+    cpdef int osd(self):
         cdef int i, j
         cdef long int l
         cdef mod2sparse *L
