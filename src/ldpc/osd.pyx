@@ -312,6 +312,8 @@ cdef class bposd_decoder(bp_decoder):
         mod2sparse_free(L)
         return 1
 
+    def set_log_prob(self, i, vall):
+        self.log_prob_ratios[i] = vall
 
     @property
     def osd_method(self):

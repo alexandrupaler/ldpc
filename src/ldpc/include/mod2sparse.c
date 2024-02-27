@@ -370,7 +370,7 @@ mod2entry *mod2sparse_find
 
 /* INSERT AN ENTRY WITH GIVEN ROW AND COLUMN. */
 
-mod2entry
+mod2entry *mod2sparse_insert
 ( mod2sparse *m,
   int row,
   int col
